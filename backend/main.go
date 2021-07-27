@@ -6,12 +6,27 @@ import (
 	"net/http"
 
 	socketio "github.com/googollee/go-socket.io"
-	"github.com/rs/cors"
+	"github.com/googollee/go-socket.io/engineio"
+	"github.com/googollee/go-socket.io/engineio/transport"
+	"github.com/googollee/go-socket.io/engineio/transport/polling"
+	"github.com/googollee/go-socket.io/engineio/transport/websocket"
 )
 
+var allowOriginFunc = func(r *http.Request) bool {
+	return true
+}
+
 func main() {
-	mux := http.NewServeMux()
-	server := socketio.NewServer(nil)
+	server := socketio.NewServer(&engineio.Options{
+		Transports: []transport.Transport{
+			&polling.Transport{
+				CheckOrigin: allowOriginFunc,
+			},
+			&websocket.Transport{
+				CheckOrigin: allowOriginFunc,
+			},
+		},
+	})
 
 	server.OnConnect("/", func(s socketio.Conn) error {
     fmt.Println("connected:", s.ID())
@@ -38,26 +53,14 @@ func main() {
 		fmt.Println("closed", s.ID(), reason)
 	})
 
-	
-
-	fs := http.FileServer(http.Dir("static"))
-	mux.Handle("/socket.io/", server)
-	mux.Handle("/", fs)
-
-	handler := cors.Default().Handler(mux)
-
-	c := cors.New(cors.Options{
-		AllowedOrigins:   []string{"*"},
-		AllowCredentials: true,
-	})
-
-	handler = c.Handler(handler)
+	http.Handle("/socket.io/", server)
+	http.Handle("/", http.FileServer(http.Dir("static")))
 
 	log.Println("Serving at localhost:8000...")
 
 	go server.Serve()
 	defer server.Close()
 
-	http.ListenAndServe("localhost:8000", handler)
+	http.ListenAndServe("localhost:8000", nil)
 
 }
