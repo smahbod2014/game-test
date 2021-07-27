@@ -18,9 +18,9 @@ function App() {
       <Switch>
         <Route path="/" exact>
           <div className="App-header">
-            <AuthRoute>
-              <Home />
-            </AuthRoute>
+            {/* <AuthRoute> */}
+            <GameSession />
+            {/* </AuthRoute> */}
           </div>
         </Route>
         <Route path="/login">

@@ -1,36 +1,24 @@
 import { useParams } from "react-router";
 import { nanoid } from "nanoid";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Box } from "@fower/react";
 import { useInterval } from "../hooks/useInterval";
+import io from "socket.io-client";
 
-interface SessionResponse {
-  sessionID: string;
-  gameID: string;
-  buttonClicked: boolean;
-}
-
-function fetchGameState(
-  sessionID: string,
-  setGameID: React.Dispatch<React.SetStateAction<string>>,
-  setClicked: React.Dispatch<React.SetStateAction<boolean>>
-) {
-  fetch(`http://localhost:8080/${sessionID}`)
-    .then((resp) => resp.json())
-    .then((sessionInfo: SessionResponse) => {
-      setGameID(sessionInfo.gameID);
-      setClicked(sessionInfo.buttonClicked);
-    });
-}
+const socket = io("http://localhost:8000");
 
 function GameSession() {
   const { sessionID } = useParams<{ sessionID: string }>();
   const [gameID, setGameID] = useState("");
-  const [clicked, setClicked] = useState(false);
+  const [selected, setSelected] = useState(false);
 
-  fetchGameState(sessionID, setGameID, setClicked);
-
-  useInterval(() => fetchGameState(sessionID, setGameID, setClicked), 3000);
+  useEffect(() => {
+    console.log("sent message i just joined");
+    socket.emit("msg", "i just joined");
+    // socket.on("change-button", ({ buttonSelected }: { buttonSelected: boolean }) => {
+    //   setSelected(buttonSelected);
+    // });
+  }, []);
 
   return (
     <>
@@ -43,27 +31,14 @@ function GameSession() {
         minH="100"
         w="100%"
         h="100%"
-        bg={clicked ? "#00ff00" : "#0000ff"}
+        bg={selected ? "#0f0" : "#00f"}
         white
         textCenter
         pt="30"
         onClick={() => {
-          setClicked(!clicked);
-
-          const options = {
-            method: "PUT",
-            headers: {
-              Accept: "application/json",
-              "Content-Type": "application/json;charset=UTF-8",
-            },
-            body: JSON.stringify({
-              id: gameID,
-              buttonClicked: !clicked,
-            }),
-          };
-          fetch(`http://localhost:8080/${sessionID}`, options).then(
-            (response) => console.log(response)
-          );
+          console.log("clicked");
+          socket.emit("msg", "button was clicked (emit)!");
+          // socket.send("button-click", "button was clicked (send)!");
         }}
       >
         Test

@@ -4,17 +4,6 @@ import "./index.css";
 import App from "./App";
 import reportWebVitals from "./reportWebVitals";
 import "bootstrap/dist/css/bootstrap.min.css";
-import express, { Request, Response } from "express";
-
-const app = express();
-
-const port = 8080;
-
-app.get("/api", (req: Request, res: Response): void => {
-  res.send("You have reached the API!");
-});
-
-app.listen(port, () => console.log(`Server listening on port ${port}!`));
 
 ReactDOM.render(
   <React.StrictMode>
