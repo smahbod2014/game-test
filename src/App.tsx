@@ -17,7 +17,7 @@ function App() {
     <BrowserRouter>
       <Switch>
         <Route path="/" exact>
-          <div className="App-header">
+          <div>
             {/* <AuthRoute> */}
             <GameSession />
             {/* </AuthRoute> */}

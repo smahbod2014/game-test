@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -17,6 +18,9 @@ var allowOriginFunc = func(r *http.Request) bool {
 }
 
 func main() {
+	gameDB := CreateGameDB()
+	gameDB.AddGame("test_id", NewGame())
+
 	server := socketio.NewServer(&engineio.Options{
 		Transports: []transport.Transport{
 			&polling.Transport{
@@ -27,27 +31,20 @@ func main() {
 			},
 		},
 	})
-
 	server.OnConnect("/", func(s socketio.Conn) error {
     fmt.Println("connected:", s.ID())
+		json, err := json.Marshal(gameDB.GetGame("test_id"))
+		if err != nil {
+			return err
+		}
+
+		s.Emit("game_state", string(json))
     return nil
 	})
 
-	server.OnEvent("/", "connection", func(s socketio.Conn) {
-    fmt.Println("connection:", s.ID())
-	})
-
 	server.OnEvent("/", "msg", func(s socketio.Conn, msg string) {
-    fmt.Println("got message:", msg)
+    fmt.Println(s.ID(), "says:", msg)
 	})
-
-	// server.OnError("/", func(s socketio.Conn, e error) {
-	// 	id := "nil"
-	// 	if s != nil {
-	// 		id = s.ID();
-	// 	}
-	// 	fmt.Println("on error:", id, e)
-	// })
 
 	server.OnDisconnect("/", func(s socketio.Conn, reason string) {
 		fmt.Println("closed", s.ID(), reason)
