@@ -4,16 +4,16 @@ import React, { useEffect, useRef, useState } from "react";
 import { Box } from "@fower/react";
 import { useInterval } from "../hooks/useInterval";
 import io from "socket.io-client";
-import internal from "stream";
 
-const socket = io("http://localhost:8000");
+const socket = io("http://localhost:8555");
 
 interface Game {
-  words: string[];
-  redIndexes: number[];
-  blueIndexes: number[];
-  neutralIndexes: number[];
-  assassinIndex: number;
+  Words: string[];
+  RedIndexes: number[];
+  BlueIndexes: number[];
+  NeutralIndexes: number[];
+  AssassinIndex: number;
+  RevealedIndexes: number[];
 }
 
 function GameSession() {
@@ -23,16 +23,10 @@ function GameSession() {
   const [gameState, setGameState] = useState<Game | null>(null);
 
   useEffect(() => {
-    // socket.on("game_state", (gameState: Game) => {
-    //   console.log("Got game state: ", gameState);
-    // });
-    socket.on("game_state", (gameState: Game) => {
-      console.log("Got game state: ", gameState);
-      setGameState(gameState);
+    socket.on("game_state", (game: string) => {
+      const g: Game = JSON.parse(game);
+      setGameState(g);
     });
-    // socket.on("change-button", ({ buttonSelected }: { buttonSelected: boolean }) => {
-    //   setSelected(buttonSelected);
-    // });
   }, []);
 
   let nums = Array.from(Array(25).keys());
@@ -41,30 +35,46 @@ function GameSession() {
       <Box pt-50 text4XL white textCenter w="100%">
         Session {sessionID}: {gameID}
       </Box>
+      {gameState && (
       <Box flex flexWrap="wrap" w="1060px" ml="auto" mr="auto" mt-50>
-        {nums.map((i) => {
+        {gameState.Words.map((word, index) => {
+          let bgColor = "#d3d3d3";
+          if (gameState.RevealedIndexes.includes(index)) {
+            if (gameState.RedIndexes.includes(index)) {
+              bgColor = "red"
+            } else if (gameState.BlueIndexes.includes(index)) {
+              bgColor = "blue"
+            } else if (gameState.NeutralIndexes.includes(index)) {
+              bgColor = "#e6d2ac"
+            } else {
+              bgColor = "#1c1c1c"
+            }
+          }
           return (
             <Box
+              key={index}
               m="12px"
               w="188px"
               h="122px"
-              bg="#d3d3d3"
+              bg={bgColor}
               black
               flex
               justifyContent="center"
               alignItems="center"
               text={28}
               onClick={() => {
-                console.log("clicked");
-                socket.emit("msg", "button was clicked (emit)!");
+                console.log("clicked ", index);
+                socket.emit("selection", String(index));
                 // socket.send("button-click", "button was clicked (send)!");
               }}
             >
-              SPACE-{i}
+              {word}
             </Box>
           );
         })}
-      </Box>
+      </Box>  
+      )}
+      
     </Box>
   );
 }

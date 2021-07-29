@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 
 	socketio "github.com/googollee/go-socket.io"
 	"github.com/googollee/go-socket.io/engineio"
@@ -32,18 +33,41 @@ func main() {
 		},
 	})
 	server.OnConnect("/", func(s socketio.Conn) error {
-    fmt.Println("connected:", s.ID())
+		fmt.Println("connected:", s.ID())
 		json, err := json.Marshal(gameDB.GetGame("test_id"))
 		if err != nil {
 			return err
 		}
 
+		s.Join("game")
 		s.Emit("game_state", string(json))
-    return nil
+		return nil
 	})
 
 	server.OnEvent("/", "msg", func(s socketio.Conn, msg string) {
-    fmt.Println(s.ID(), "says:", msg)
+		fmt.Println(s.ID(), "says:", msg)
+	})
+
+	server.OnEvent("/", "selection", func(s socketio.Conn, msg string) {
+		fmt.Println(s.ID(), "clicks:", msg)
+		index, err := strconv.Atoi(msg)
+		if err != nil {
+			log.Fatal(err)
+			return
+		}
+		game := gameDB.GetGame("test_id")
+		for _, v := range game.RevealedIndexes {
+			if v == index {
+				return
+			}
+		}
+		game.RevealedIndexes = append(game.RevealedIndexes, index)
+		json, err := json.Marshal(game)
+		if err != nil {
+			log.Fatal(err)
+			return
+		}
+		server.BroadcastToRoom("/", "game", "game_state", string(json))
 	})
 
 	server.OnDisconnect("/", func(s socketio.Conn, reason string) {
@@ -53,11 +77,12 @@ func main() {
 	http.Handle("/socket.io/", server)
 	http.Handle("/", http.FileServer(http.Dir("static")))
 
-	log.Println("Serving at localhost:8000...")
+	log.Println("Serving at localhost:8555...")
 
 	go server.Serve()
 	defer server.Close()
 
-	http.ListenAndServe("localhost:8000", nil)
+	http.ListenAndServe("localhost:8555", nil)
 
+	log.Println("Shutting down")
 }
