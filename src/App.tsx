@@ -28,11 +28,9 @@ function App() {
             <Login />
           </div>
         </Route>
-        <Route path="/:sessionID">
-          <div className="App-header">
-            <AuthRoute>
-              <GameSession />
-            </AuthRoute>
+        <Route path="/:gameID">
+          <div>
+            <GameSession />
           </div>
         </Route>
       </Switch>

@@ -4,8 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math/rand"
 	"net/http"
-	"strconv"
+	"time"
 
 	socketio "github.com/googollee/go-socket.io"
 	"github.com/googollee/go-socket.io/engineio"
@@ -19,6 +20,12 @@ var allowOriginFunc = func(r *http.Request) bool {
 }
 
 func main() {
+	rand.Seed(time.Now().UnixNano())
+	if err := LoadDefaultWords(); err != nil {
+		log.Fatal(err)
+		return
+	}
+
 	gameDB := CreateGameDB()
 	gameDB.AddGame("test_id", NewGame())
 
@@ -32,9 +39,10 @@ func main() {
 			},
 		},
 	})
+
 	server.OnConnect("/", func(s socketio.Conn) error {
 		fmt.Println("connected:", s.ID())
-		json, err := json.Marshal(gameDB.GetGame("test_id"))
+		json, err := json.Marshal(gameDB.GetGame("test_id").ToGameFlags(false))
 		if err != nil {
 			return err
 		}
@@ -48,26 +56,46 @@ func main() {
 		fmt.Println(s.ID(), "says:", msg)
 	})
 
+	server.OnEvent("/", "new_game", func(s socketio.Conn, msg string) {
+		fmt.Println(s.ID(), "initiates new game")
+
+		game := NewGame()
+		gameDB.AddGame("test_id", game)
+		json, err := json.Marshal(game.ToGameFlags(true))
+		if err != nil {
+			log.Fatal(err)
+			return
+		}
+
+		server.BroadcastToRoom("/", "game", "game_state", string(json))
+	})
+
 	server.OnEvent("/", "selection", func(s socketio.Conn, msg string) {
 		fmt.Println(s.ID(), "clicks:", msg)
-		index, err := strconv.Atoi(msg)
+		var selection *Selection
+		err := json.Unmarshal([]byte(msg), &selection)
 		if err != nil {
 			log.Fatal(err)
 			return
 		}
 		game := gameDB.GetGame("test_id")
 		for _, v := range game.RevealedIndexes {
-			if v == index {
+			if v == selection.Index {
 				return
 			}
 		}
-		game.RevealedIndexes = append(game.RevealedIndexes, index)
-		json, err := json.Marshal(game)
+		game.RevealedIndexes = append(game.RevealedIndexes, selection.Index)
+		game.GameOver = selection.Index == game.AssassinIndex
+		json, err := json.Marshal(game.ToGameFlags(false))
 		if err != nil {
 			log.Fatal(err)
 			return
 		}
 		server.BroadcastToRoom("/", "game", "game_state", string(json))
+	})
+
+	server.OnError("/", func(c socketio.Conn, e error) {
+		log.Fatal(e)
 	})
 
 	server.OnDisconnect("/", func(s socketio.Conn, reason string) {
