@@ -19,7 +19,7 @@ function App() {
         <Route path="/" exact>
           <div>
             {/* <AuthRoute> */}
-            <GameSession />
+            <Home />
             {/* </AuthRoute> */}
           </div>
         </Route>

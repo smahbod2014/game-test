@@ -11,5 +11,7 @@ require (
 	github.com/graarh/golang-socketio v0.0.0-20170510162725-2c44953b9b5f // indirect
 	github.com/labstack/echo v3.3.10+incompatible // indirect
 	github.com/labstack/gommon v0.3.0 // indirect
+	github.com/mileusna/conditional v0.5.0 // indirect
 	github.com/rs/cors v1.8.0 // indirect
+	github.com/thoas/go-funk v0.9.0 // indirect
 )

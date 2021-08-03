@@ -8,24 +8,25 @@ import { nanoid } from "nanoid";
 
 const Home = () => {
   const [sessionID, setSessonID] = useState("");
-  const [Loading, setLoading] = useState(true);
+  const [Loading, setLoading] = useState(false);
 
-  Firebase.auth().onAuthStateChanged((user) => {
-    setLoading(false);
-  });
+  // Firebase.auth().onAuthStateChanged((user) => {
+  //   setLoading(false);
+  // });
 
   if (Loading) {
     return <Spinner color="info" children="" />;
   }
 
-  if (!Firebase.auth().currentUser) {
-    return <Redirect to="/login" />;
-  }
+  // if (!Firebase.auth().currentUser) {
+  //   return <Redirect to="/login" />;
+  // }
 
   return (
-    <>
-      <h1>Home</h1>
-      <Box>Welcome, {Firebase.auth().currentUser?.uid}</Box>
+    <Box className="App-header">
+      <h1>Welcome</h1>
+
+      {/* <Box>Welcome, {Firebase.auth().currentUser?.uid}</Box> */}
 
       <Link to={`/${nanoid()}`}>
         <Button color="info">New Game</Button>
@@ -42,7 +43,7 @@ const Home = () => {
           Go
         </Box> */}
       </Link>
-    </>
+    </Box>
   );
 };
 

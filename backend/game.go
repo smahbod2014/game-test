@@ -6,6 +6,9 @@ import (
 	"math/rand"
 	"os"
 	"strings"
+
+	"github.com/mileusna/conditional"
+	"github.com/thoas/go-funk"
 )
 
 type Game struct {
@@ -16,6 +19,8 @@ type Game struct {
 	AssassinIndex   int
 	RevealedIndexes []int
 	GameOver        bool
+	WhoseTurn       string
+	StartingTeam    string
 }
 
 type GameFlags struct {
@@ -67,14 +72,24 @@ func NewGame() *Game {
 	}
 	rand.Shuffle(len(c), func(i, j int) { c[i], c[j] = c[j], c[i] })
 
+	blueStarts := rand.Intn(2) == 1
+	cutoffIndex := 9
+	if blueStarts {
+		cutoffIndex = 8
+	}
+
+	startingTeam := conditional.String(blueStarts, "blue", "red")
+
 	return &Game{
 		Words:           words,
-		RedIndexes:      c[0:9],
-		BlueIndexes:     c[9:17],
+		RedIndexes:      c[0:cutoffIndex],
+		BlueIndexes:     c[cutoffIndex:17],
 		NeutralIndexes:  c[17:24],
 		AssassinIndex:   c[24],
 		RevealedIndexes: []int{},
 		GameOver:        false,
+		WhoseTurn:       startingTeam,
+		StartingTeam:    startingTeam,
 	}
 }
 
@@ -83,4 +98,31 @@ func (g *Game) ToGameFlags(reset bool) *GameFlags {
 		GameState: g,
 		Reset:     reset,
 	}
+}
+
+func (g Game) WhoseWord(index int) string {
+	if funk.ContainsInt(g.RedIndexes, index) {
+		return "red"
+	}
+	if funk.ContainsInt(g.BlueIndexes, index) {
+		return "blue"
+	}
+	if funk.ContainsInt(g.NeutralIndexes, index) {
+		return "neutral"
+	}
+	return "assassin"
+}
+
+func (g Game) GetOppositeTeam() string {
+	return conditional.String(g.WhoseTurn == "red", "blue", "red")
+}
+
+func (g Game) GetFinishedTeam() string {
+	if len(funk.Subtract(g.RedIndexes, g.RevealedIndexes).([]int)) == 0 {
+		return "red"
+	}
+	if len(funk.Subtract(g.BlueIndexes, g.RevealedIndexes).([]int)) == 0 {
+		return "blue"
+	}
+	return ""
 }

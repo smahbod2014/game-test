@@ -13,6 +13,7 @@ import (
 	"github.com/googollee/go-socket.io/engineio/transport"
 	"github.com/googollee/go-socket.io/engineio/transport/polling"
 	"github.com/googollee/go-socket.io/engineio/transport/websocket"
+	"github.com/mileusna/conditional"
 )
 
 var allowOriginFunc = func(r *http.Request) bool {
@@ -27,7 +28,6 @@ func main() {
 	}
 
 	gameDB := CreateGameDB()
-	gameDB.AddGame("test_id", NewGame())
 
 	server := socketio.NewServer(&engineio.Options{
 		Transports: []transport.Transport{
@@ -42,56 +42,63 @@ func main() {
 
 	server.OnConnect("/", func(s socketio.Conn) error {
 		fmt.Println("connected:", s.ID())
-		json, err := json.Marshal(gameDB.GetGame("test_id").ToGameFlags(false))
-		if err != nil {
-			return err
-		}
-
-		s.Join("game")
-		s.Emit("game_state", string(json))
 		return nil
+	})
+
+	server.OnEvent("/", "join", func(s socketio.Conn, gameID string) {
+		fmt.Println(s.ID(), "joins", gameID)
+
+		game := gameDB.GetGame(gameID)
+		if game == nil {
+			game = NewGame()
+			gameDB.AddGame(gameID, game)
+		}
+		json, err := json.Marshal(game.ToGameFlags(false))
+		if err != nil {
+			log.Fatal(err)
+			return
+		}
+		s.Join("game_" + gameID)
+		s.Emit("game_state", string(json))
 	})
 
 	server.OnEvent("/", "msg", func(s socketio.Conn, msg string) {
 		fmt.Println(s.ID(), "says:", msg)
 	})
 
-	server.OnEvent("/", "new_game", func(s socketio.Conn, msg string) {
+	server.OnEvent("/", "new_game", func(s socketio.Conn, gameID string) {
 		fmt.Println(s.ID(), "initiates new game")
-
 		game := NewGame()
-		gameDB.AddGame("test_id", game)
-		json, err := json.Marshal(game.ToGameFlags(true))
-		if err != nil {
-			log.Fatal(err)
-			return
-		}
-
-		server.BroadcastToRoom("/", "game", "game_state", string(json))
+		gameDB.AddGame(gameID, game)
+		BroadcastGameState(game.ToGameFlags(true), gameID, server)
 	})
 
 	server.OnEvent("/", "selection", func(s socketio.Conn, msg string) {
-		fmt.Println(s.ID(), "clicks:", msg)
 		var selection *Selection
 		err := json.Unmarshal([]byte(msg), &selection)
 		if err != nil {
 			log.Fatal(err)
 			return
 		}
-		game := gameDB.GetGame("test_id")
+
+		fmt.Println(s.ID(), "from game", selection.GameID, "clicks:", msg)
+
+		game := gameDB.GetGame(selection.GameID)
 		for _, v := range game.RevealedIndexes {
 			if v == selection.Index {
 				return
 			}
 		}
+		game.WhoseTurn = conditional.String(game.WhoseWord(selection.Index) == game.WhoseTurn, game.WhoseTurn, game.GetOppositeTeam())
 		game.RevealedIndexes = append(game.RevealedIndexes, selection.Index)
-		game.GameOver = selection.Index == game.AssassinIndex
-		json, err := json.Marshal(game.ToGameFlags(false))
-		if err != nil {
-			log.Fatal(err)
-			return
-		}
-		server.BroadcastToRoom("/", "game", "game_state", string(json))
+		game.GameOver = selection.Index == game.AssassinIndex || game.GetFinishedTeam() != ""
+		BroadcastGameState(game.ToGameFlags(false), selection.GameID, server)
+	})
+
+	server.OnEvent("/", "pass", func(s socketio.Conn, gameID string) {
+		game := gameDB.GetGame(gameID)
+		game.WhoseTurn = game.GetOppositeTeam()
+		BroadcastGameState(game.ToGameFlags(false), gameID, server)
 	})
 
 	server.OnError("/", func(c socketio.Conn, e error) {
@@ -113,4 +120,13 @@ func main() {
 	http.ListenAndServe("localhost:8555", nil)
 
 	log.Println("Shutting down")
+}
+
+func BroadcastGameState(gameState *GameFlags, gameID string, server *socketio.Server) {
+	json, err := json.Marshal(gameState)
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
+	server.BroadcastToRoom("/", "game_"+gameID, "game_state", string(json))
 }

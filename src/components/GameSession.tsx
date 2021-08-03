@@ -15,6 +15,7 @@ interface Game {
   AssassinIndex: number;
   RevealedIndexes: number[];
   WhoseTurn: string;
+  StartingTeam: string;
   GameOver: boolean;
 }
 
@@ -23,12 +24,34 @@ interface GameFlags {
   Reset: boolean;
 }
 
+function GetRedRemaining(game: Game): number {
+  return (
+    game.RedIndexes.length -
+    game.RedIndexes.filter((value) => game.RevealedIndexes.includes(value))
+      .length
+  );
+}
+
+function GetBlueRemaining(game: Game): number {
+  return (
+    game.BlueIndexes.length -
+    game.BlueIndexes.filter((value) => game.RevealedIndexes.includes(value))
+      .length
+  );
+}
+
+function IsAlreadyRevealed(game: Game, index: number): boolean {
+  return game.RevealedIndexes.includes(index);
+}
+
 function GameSession() {
-  const { gameID } = useParams<{ gameID: string }>();
+  let { gameID } = useParams<{ gameID: string }>();
   const [gameState, setGameState] = useState<Game | null>(null);
   const [isSpymaster, setIsSpymaster] = useState(
     localStorage.getItem("codenames_is_spymaster") === "true"
   );
+
+  gameID = gameID === undefined || gameID === "" ? "default" : gameID;
 
   useEffect(() => {
     socket.on("game_state", (game: string) => {
@@ -40,6 +63,8 @@ function GameSession() {
         setIsSpymaster(false);
       }
     });
+
+    socket.emit("join", gameID);
   }, []);
 
   if (!gameState) {
@@ -58,24 +83,42 @@ function GameSession() {
         CODENAMES
       </Box>
       <Box w="1000px" ml="auto" mr="auto">
-        <Box flex mt-30 justifyContent="space-between">
-          <Box white w="10em">
-            9 - 8
+        <Box mt-30 flex justifyContent="space-between">
+          <Box white text3XL>
+            <Box inline color={gameState.StartingTeam}>
+              {gameState.StartingTeam === "red"
+                ? GetRedRemaining(gameState)
+                : GetBlueRemaining(gameState)}
+            </Box>
+            <Box inline>&#160;-&#160;</Box>
+            <Box
+              inline
+              color={gameState.StartingTeam === "red" ? "blue" : "red"}
+            >
+              {gameState.StartingTeam === "red"
+                ? GetBlueRemaining(gameState)
+                : GetRedRemaining(gameState)}
+            </Box>
           </Box>
-          <Box text2XL color={gameState.WhoseTurn === "red" ? "red" : "blue"}>
-            {gameState.WhoseTurn === "red" ? "Red" : "Blue"}'s turn
+          <Box text2XL color={gameState.WhoseTurn}>
+            {gameState.WhoseTurn === "red" ? "Red" : "Blue"}
+            {gameState.GameOver ? " wins!" : "'s turn"}
           </Box>
-          <Box textAlign="right" w="10em" block>
+          <Box>
             <Box
               as="button"
-              bgOrange400
-              bgOrange400--D10--hover
+              bgGray400
+              bgGray400--D10--hover
               white
               rounded
               py3
               px5
               outlineNone
               cursorPointer
+              disabled={gameState.GameOver}
+              onClick={() => {
+                socket.emit("pass", gameID);
+              }}
             >
               Pass
             </Box>
@@ -110,6 +153,7 @@ function GameSession() {
                 bgColor = "blue";
               } else if (gameState.NeutralIndexes.includes(index)) {
                 bgColor = "#e6d2ac";
+                textColor = "black";
               } else {
                 bgColor = "#1c1c1c";
               }
@@ -138,7 +182,11 @@ function GameSession() {
                 borderStyle="solid"
                 border={isSpymaster && gameState.AssassinIndex == index && 7}
                 borderBlack={gameState.AssassinIndex == index}
-                cursorPointer={!isSpymaster && !gameState.GameOver}
+                cursorPointer={
+                  !isSpymaster &&
+                  !gameState.GameOver &&
+                  !IsAlreadyRevealed(gameState, index)
+                }
                 onClick={() => {
                   if (isSpymaster || gameState.GameOver) {
                     return;
