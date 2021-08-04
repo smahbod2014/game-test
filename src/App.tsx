@@ -3,7 +3,13 @@ import logo from "./logo.svg";
 import "./App.css";
 import { nanoid } from "nanoid";
 import GameSession from "./components/GameSession";
-import { BrowserRouter, Link, Route, Switch } from "react-router-dom";
+import {
+  BrowserRouter,
+  HashRouter,
+  Link,
+  Route,
+  Switch,
+} from "react-router-dom";
 import { Box } from "@fower/react";
 import { styled } from "@fower/styled";
 import Login from "./components/Login";
@@ -28,7 +34,7 @@ function App() {
             <Login />
           </div>
         </Route>
-        <Route path="/:gameID">
+        <Route path="/game/:gameID">
           <div>
             <GameSession />
           </div>

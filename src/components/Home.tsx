@@ -28,7 +28,7 @@ const Home = () => {
 
       {/* <Box>Welcome, {Firebase.auth().currentUser?.uid}</Box> */}
 
-      <Link to={`/${nanoid()}`}>
+      <Link to={`/game/${nanoid()}`}>
         <Button color="info">New Game</Button>
         {/* <Box
           as="button"

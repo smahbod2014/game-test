@@ -65,7 +65,7 @@ function GameSession() {
     });
 
     socket.emit("join", gameID);
-  }, []);
+  }, [gameID]);
 
   if (!gameState) {
     return (

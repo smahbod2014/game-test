@@ -6,8 +6,11 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"os"
 	"time"
 
+	"github.com/gofiber/adaptor/v2"
+	"github.com/gofiber/fiber/v2"
 	socketio "github.com/googollee/go-socket.io"
 	"github.com/googollee/go-socket.io/engineio"
 	"github.com/googollee/go-socket.io/engineio/transport"
@@ -109,15 +112,23 @@ func main() {
 		fmt.Println("closed", s.ID(), reason)
 	})
 
-	http.Handle("/socket.io/", server)
-	http.Handle("/", http.FileServer(http.Dir("static")))
+	app := fiber.New()
+	// app.Static("/", "build")
+	// app.Static("/game/*", "build")
+	app.Get("/socket.io/", adaptor.HTTPHandler(server))
+	app.Post("/socket.io/", adaptor.HTTPHandler(server))
 
-	log.Println("Serving at localhost:8555...")
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8555"
+	}
+
+	log.Println("Listening on port", port)
 
 	go server.Serve()
 	defer server.Close()
 
-	http.ListenAndServe("localhost:8555", nil)
+	app.Listen(":" + port)
 
 	log.Println("Shutting down")
 }
