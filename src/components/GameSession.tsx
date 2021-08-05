@@ -5,7 +5,7 @@ import { Box } from "@fower/react";
 import { useInterval } from "../hooks/useInterval";
 import io from "socket.io-client";
 
-const socket = io("http://localhost:8555");
+const socket = io("http://localhost:8555", { transports: ["websocket"] });
 
 interface Game {
   Words: string[];
@@ -47,9 +47,7 @@ function IsAlreadyRevealed(game: Game, index: number): boolean {
 function GameSession() {
   let { gameID } = useParams<{ gameID: string }>();
   const [gameState, setGameState] = useState<Game | null>(null);
-  const [isSpymaster, setIsSpymaster] = useState(
-    localStorage.getItem("codenames_is_spymaster") === "true"
-  );
+  const [isSpymaster, setIsSpymaster] = useState(false);
 
   gameID = gameID === undefined || gameID === "" ? "default" : gameID;
 
@@ -59,7 +57,6 @@ function GameSession() {
       setGameState(g.GameState);
 
       if (g.Reset) {
-        localStorage.removeItem("codenames_is_spymaster");
         setIsSpymaster(false);
       }
     });
@@ -114,8 +111,9 @@ function GameSession() {
               py3
               px5
               outlineNone
-              cursorPointer
-              disabled={gameState.GameOver}
+              cursorPointer={!isSpymaster}
+              cursorNotAllowed={isSpymaster}
+              disabled={gameState.GameOver || isSpymaster}
               onClick={() => {
                 socket.emit("pass", gameID);
               }}
@@ -217,10 +215,6 @@ function GameSession() {
               checked={isSpymaster}
               onChange={(e) => {
                 setIsSpymaster(e.target.checked);
-                localStorage.setItem(
-                  "codenames_is_spymaster",
-                  String(e.target.checked)
-                );
               }}
             />
             <label

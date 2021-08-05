@@ -7,15 +7,15 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
+	"path/filepath"
 	"time"
 
-	"github.com/gofiber/adaptor/v2"
-	"github.com/gofiber/fiber/v2"
 	socketio "github.com/googollee/go-socket.io"
 	"github.com/googollee/go-socket.io/engineio"
 	"github.com/googollee/go-socket.io/engineio/transport"
 	"github.com/googollee/go-socket.io/engineio/transport/polling"
 	"github.com/googollee/go-socket.io/engineio/transport/websocket"
+	"github.com/gorilla/mux"
 	"github.com/mileusna/conditional"
 )
 
@@ -105,18 +105,12 @@ func main() {
 	})
 
 	server.OnError("/", func(c socketio.Conn, e error) {
-		log.Fatal(e)
+		log.Fatal("error:", e)
 	})
 
 	server.OnDisconnect("/", func(s socketio.Conn, reason string) {
 		fmt.Println("closed", s.ID(), reason)
 	})
-
-	app := fiber.New()
-	// app.Static("/", "build")
-	// app.Static("/game/*", "build")
-	app.Get("/socket.io/", adaptor.HTTPHandler(server))
-	app.Post("/socket.io/", adaptor.HTTPHandler(server))
 
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -128,7 +122,25 @@ func main() {
 	go server.Serve()
 	defer server.Close()
 
-	app.Listen(":" + port)
+	// http.Handle("/socket.io/", server)
+	// http.Handle("/", http.FileServer(http.Dir("build")))
+	// http.Handle("/game/*", http.FileServer(http.Dir("build")))
+
+	router := mux.NewRouter()
+
+	router.Handle("/socket.io/", server)
+	spa := spaHandler{staticPath: "build", indexPath: "index.html"}
+	router.PathPrefix("/").Handler(spa)
+
+	srv := &http.Server{
+		Handler: router,
+		Addr:    ":" + port,
+		// Good practice: enforce timeouts for servers you create!
+		WriteTimeout: 15 * time.Second,
+		ReadTimeout:  15 * time.Second,
+	}
+
+	log.Fatal(srv.ListenAndServe())
 
 	log.Println("Shutting down")
 }
@@ -140,4 +152,43 @@ func BroadcastGameState(gameState *GameFlags, gameID string, server *socketio.Se
 		return
 	}
 	server.BroadcastToRoom("/", "game_"+gameID, "game_state", string(json))
+}
+
+type spaHandler struct {
+	staticPath string
+	indexPath  string
+}
+
+// ServeHTTP inspects the URL path to locate a file within the static dir
+// on the SPA handler. If a file is found, it will be served. If not, the
+// file located at the index path on the SPA handler will be served. This
+// is suitable behavior for serving an SPA (single page application).
+func (h spaHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// get the absolute path to prevent directory traversal
+	path, err := filepath.Abs(r.URL.Path)
+	if err != nil {
+		// if we failed to get the absolute path respond with a 400 bad request
+		// and stop
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// prepend the path with the path to the static directory
+	path = filepath.Join(h.staticPath, path)
+
+	// check whether a file exists at the given path
+	_, err = os.Stat(path)
+	if os.IsNotExist(err) {
+		// file does not exist, serve index.html
+		http.ServeFile(w, r, filepath.Join(h.staticPath, h.indexPath))
+		return
+	} else if err != nil {
+		// if we got an error (that wasn't that the file doesn't exist) stating the
+		// file, return a 500 internal server error and stop
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// otherwise, use http.FileServer to serve the static dir
+	http.FileServer(http.Dir(h.staticPath)).ServeHTTP(w, r)
 }
