@@ -129,6 +129,9 @@ func main() {
 	router := mux.NewRouter()
 
 	router.Handle("/socket.io/", server)
+	router.HandleFunc("/api/health", func(w http.ResponseWriter, r *http.Request) {
+		json.NewEncoder(w).Encode(map[string]bool{"ok": true})
+	})
 	spa := spaHandler{staticPath: "build", indexPath: "index.html"}
 	router.PathPrefix("/").Handler(spa)
 

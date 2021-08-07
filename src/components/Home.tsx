@@ -24,7 +24,7 @@ const Home = () => {
 
   return (
     <Box className="App-header">
-      <h1>Welcome</h1>
+      <h1>Welcome ({process.env.NODE_ENV})</h1>
 
       {/* <Box>Welcome, {Firebase.auth().currentUser?.uid}</Box> */}
 

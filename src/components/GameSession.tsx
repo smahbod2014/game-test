@@ -1,11 +1,16 @@
 import { useParams } from "react-router";
-import { nanoid } from "nanoid";
 import React, { useEffect, useRef, useState } from "react";
 import { Box } from "@fower/react";
-import { useInterval } from "../hooks/useInterval";
 import io from "socket.io-client";
 
-const socket = io("http://localhost:8555", { transports: ["websocket"] });
+const socket = io(
+  process.env.NODE_ENV === "production"
+    ? "http://nameless-island-33777.herokuapp.com"
+    : "http://localhost:8555",
+  {
+    transports: ["websocket"],
+  }
+);
 
 interface Game {
   Words: string[];
