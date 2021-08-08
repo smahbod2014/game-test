@@ -40,3 +40,83 @@
 .hoverable {
   cursor: pointer;
 }
+
+.text {
+  width: 25%;
+  margin: auto;
+  margin-top: 20px;
+}
+
+.decrypto-sheet {
+  border: 1px solid green;
+  background-image: url("images/white_sheet.png");
+  width: 725px;
+  height: 1036px;
+  margin: auto;
+}
+
+.decrypto-round-container {
+  border: 1px solid blue;
+  width: 700px;
+  height: 605px;
+  margin-top: 78px;
+  margin-left: auto;
+  margin-right: auto;
+  display: flex;
+  flex-direction: column;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-content: space-between;
+}
+
+.decrypto-round-entry {
+  border: 1px solid red;
+  width: 345px;
+  height: 132px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+}
+
+.decrypto-round-line {
+  border: 1px solid red;
+  width: 345px;
+  height: 35px;
+}
+
+.decrypto-input {
+  border: 1px solid red;
+  background: transparent;
+  outline: 0;
+  width: 275px;
+  height: 35px;
+}
+
+.decrypto-guess {
+  border: 1px solid red;
+  background: transparent;
+  outline: 0;
+  width: 33px;
+  height: 35px;
+}
+
+.decrypto-answer-container {
+  border: 1px solid blue;
+  width: 700px;
+  height: 305px;
+  margin-top: 30px;
+  margin-left: auto;
+  margin-right: auto;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-around;
+}
+
+.decrypto-answer-input {
+  border: 1px solid red;
+  background: transparent;
+  outline: 0;
+  margin-top: 1px;
+  width: 24%;
+  height: 99%;
+}

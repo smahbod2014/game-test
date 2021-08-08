@@ -65,10 +65,6 @@ func main() {
 		s.Emit("game_state", string(json))
 	})
 
-	server.OnEvent("/", "msg", func(s socketio.Conn, msg string) {
-		fmt.Println(s.ID(), "says:", msg)
-	})
-
 	server.OnEvent("/", "new_game", func(s socketio.Conn, gameID string) {
 		fmt.Println(s.ID(), "initiates new game")
 		game := NewGame()
@@ -104,6 +100,20 @@ func main() {
 		BroadcastGameState(game.ToGameFlags(false), gameID, server)
 	})
 
+	server.OnEvent("/", "join_decrypto", func(s socketio.Conn, msg string) {
+		s.Join("decrypto")
+	})
+
+	server.OnEvent("/", "decrypto_text", func(s socketio.Conn, msg string) {
+		fmt.Println(s.ID(), "decrypto_text", msg)
+
+		server.ForEach("/", "decrypto", func(c socketio.Conn) {
+			if c.ID() != s.ID() {
+				c.Emit("text_event", msg)
+			}
+		})
+	})
+
 	server.OnError("/", func(c socketio.Conn, e error) {
 		log.Fatal("error:", e)
 	})
@@ -121,10 +131,6 @@ func main() {
 
 	go server.Serve()
 	defer server.Close()
-
-	// http.Handle("/socket.io/", server)
-	// http.Handle("/", http.FileServer(http.Dir("build")))
-	// http.Handle("/game/*", http.FileServer(http.Dir("build")))
 
 	router := mux.NewRouter()
 
