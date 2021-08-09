@@ -31,6 +31,11 @@ func main() {
 	}
 
 	gameDB := CreateGameDB()
+	decryptoDefaultWordList, err := LoadWordListFromFile("decrypto_word_list.txt")
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
 
 	server := socketio.NewServer(&engineio.Options{
 		Transports: []transport.Transport{
@@ -51,10 +56,10 @@ func main() {
 	server.OnEvent("/", "join", func(s socketio.Conn, gameID string) {
 		fmt.Println(s.ID(), "joins", gameID)
 
-		game := gameDB.GetGame(gameID)
+		game := gameDB.GetCodenamesGame(gameID)
 		if game == nil {
 			game = NewGame()
-			gameDB.AddGame(gameID, game)
+			gameDB.AddCodenamesGame(gameID, game)
 		}
 		json, err := json.Marshal(game.ToGameFlags(false))
 		if err != nil {
@@ -68,7 +73,7 @@ func main() {
 	server.OnEvent("/", "new_game", func(s socketio.Conn, gameID string) {
 		fmt.Println(s.ID(), "initiates new game")
 		game := NewGame()
-		gameDB.AddGame(gameID, game)
+		gameDB.AddCodenamesGame(gameID, game)
 		BroadcastGameState(game.ToGameFlags(true), gameID, server)
 	})
 
@@ -82,7 +87,7 @@ func main() {
 
 		fmt.Println(s.ID(), "from game", selection.GameID, "clicks:", msg)
 
-		game := gameDB.GetGame(selection.GameID)
+		game := gameDB.GetCodenamesGame(selection.GameID)
 		for _, v := range game.RevealedIndexes {
 			if v == selection.Index {
 				return
@@ -95,23 +100,87 @@ func main() {
 	})
 
 	server.OnEvent("/", "pass", func(s socketio.Conn, gameID string) {
-		game := gameDB.GetGame(gameID)
+		game := gameDB.GetCodenamesGame(gameID)
 		game.WhoseTurn = game.GetOppositeTeam()
 		BroadcastGameState(game.ToGameFlags(false), gameID, server)
 	})
 
-	server.OnEvent("/", "join_decrypto", func(s socketio.Conn, msg string) {
-		s.Join("decrypto")
+	server.OnEvent("/", "join_decrypto", func(s socketio.Conn, gameID string) {
+		fmt.Println(s.ID(), "join_decrypto", gameID)
+
+		game := gameDB.GetDecryptoGame(gameID)
+		if game == nil {
+			game = NewDecryptoGame(decryptoDefaultWordList)
+			gameDB.AddDecryptoGame(gameID, game)
+		}
+		json, err := json.Marshal(game.WithFlags(false))
+		if err != nil {
+			log.Fatal(err)
+			return
+		}
+
+		s.Join("decrypto_" + gameID)
+		s.Emit("game_state", string(json))
 	})
 
 	server.OnEvent("/", "decrypto_text", func(s socketio.Conn, msg string) {
 		fmt.Println(s.ID(), "decrypto_text", msg)
 
-		server.ForEach("/", "decrypto", func(c socketio.Conn) {
+		var textEvent *TextEvent
+		err := json.Unmarshal([]byte(msg), &textEvent)
+		if err != nil {
+			log.Fatal(err)
+			return
+		}
+
+		game := gameDB.GetDecryptoGame(textEvent.GameID)
+		game.Content[textEvent.ElementID] = textEvent.Value
+
+		json, err := json.Marshal(game)
+		if err != nil {
+			log.Fatal(err)
+			return
+		}
+
+		server.ForEach("/", "decrypto_" + textEvent.GameID, func(c socketio.Conn) {
 			if c.ID() != s.ID() {
-				c.Emit("text_event", msg)
+				c.Emit("text_event", string(json))
 			}
 		})
+	})
+
+	server.OnEvent("/", "decrypto_score", func(s socketio.Conn, msg string) {
+		fmt.Println(s.ID(), "decrypto_score", msg)
+
+		var scoreEvent *ScoreEvent
+		err := json.Unmarshal([]byte(msg), &scoreEvent)
+		if err != nil {
+			log.Fatal(err)
+			return
+		}
+
+		game := gameDB.GetDecryptoGame(scoreEvent.GameID)
+		game.UpdateScore(scoreEvent)
+
+		json, err := json.Marshal(game)
+		if err != nil {
+			log.Fatal(err)
+			return
+		}
+		server.BroadcastToRoom("/", "decrypto_" + scoreEvent.GameID, "score_event", string(json))
+	})
+
+	server.OnEvent("/", "decrypto_new_game", func(s socketio.Conn, gameID string) {
+		fmt.Println(s.ID(), "decrypto_new_game")
+
+		game := NewDecryptoGame(decryptoDefaultWordList)
+		gameDB.AddDecryptoGame("test", game)
+		json, err := json.Marshal(game.WithFlags(true))
+		if err != nil {
+			log.Fatal(err)
+			return
+		}
+		server.BroadcastToRoom("/", "decrypto_" + gameID, "game_state", string(json))
 	})
 
 	server.OnError("/", func(c socketio.Conn, e error) {

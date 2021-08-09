@@ -24,24 +24,15 @@ const Home = () => {
 
   return (
     <Box className="App-header">
-      <h1>Welcome ({process.env.NODE_ENV})</h1>
+      <h1>Choose a game</h1>
 
       {/* <Box>Welcome, {Firebase.auth().currentUser?.uid}</Box> */}
 
       <Link to={`/game/${nanoid()}`}>
-        <Button color="info">New Game</Button>
-        {/* <Box
-          as="button"
-          mt="5"
-          text4XL
-          border-1
-          rounded="5"
-          w="100%"
-          minW="200"
-          onClick={() => setSessonID("")}
-        >
-          Go
-        </Box> */}
+        <Button color="info">Codenames</Button>
+      </Link>
+      <Link to={`/decrypto/${nanoid()}`}>
+        <Button color="info">Decrypto</Button>
       </Link>
     </Box>
   );

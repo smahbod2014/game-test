@@ -17,4 +17,5 @@ require (
 	github.com/mileusna/conditional v0.5.0 // indirect
 	github.com/rs/cors v1.8.0 // indirect
 	github.com/thoas/go-funk v0.9.0 // indirect
+	modernc.org/mathutil v1.4.1 // indirect
 )
