@@ -174,7 +174,7 @@ func main() {
 		fmt.Println(s.ID(), "decrypto_new_game")
 
 		game := NewDecryptoGame(decryptoDefaultWordList)
-		gameDB.AddDecryptoGame("test", game)
+		gameDB.AddDecryptoGame(gameID, game)
 		json, err := json.Marshal(game.WithFlags(true))
 		if err != nil {
 			log.Fatal(err)
